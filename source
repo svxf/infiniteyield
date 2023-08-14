@@ -5622,6 +5622,47 @@ function round(num, numDecimalPlaces)
 	return math.floor(num * mult + 0.5) / mult
 end
 
+function GetESPColorForPlayer(_player, _team)
+	local color = Color3.fromHSV(math.random(), 0.25 + math.random()/2, 1)
+	
+	return color
+end
+
+function RemoveHearts(_text)
+	local HeartIndices = string.find(_text, "<3", 1, true)
+	if HeartIndices then
+		if HeartIndices >= string.len(_text)-1 then return string.sub(_text, 1, HeartIndices-1) .. "❤"
+		else
+			local SplitParts = { string.sub(_text, 1, HeartIndices-1), string.sub(_text, HeartIndices+2, -1) }
+			return SplitParts[1] .. "❤" .. SplitParts[2]
+		end
+	else return _text
+	end
+end
+
+function SplitRPName(_text)
+	local FinalName = ""
+	local NameParts = {}
+	
+	if _text:len() <= 20 then FinalName = RemoveHearts(_text)
+	else
+		for i = 1, _text:len(), 20 do
+			if i <= _text:len()-20 then
+				table.insert(NameParts, RemoveHearts(_text:sub(i, i+20)))
+			else
+				table.insert(NameParts, RemoveHearts(_text:sub(i)))
+			end
+		end
+		
+		for i, portion in ipairs(NameParts) do
+			FinalName = FinalName .. portion
+			if i ~= #NameParts then FinalName = FinalName .. "<br/>" end
+		end
+	end
+	
+	return FinalName
+end
+
 function ESP(plr)
 	task.spawn(function()
 		for i,v in pairs(COREGUI:GetChildren()) do
@@ -5635,6 +5676,11 @@ function ESP(plr)
 			ESPholder.Name = plr.Name..'_ESP'
 			ESPholder.Parent = COREGUI
 			repeat wait(1) until plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid")
+			
+			if not plr:GetAttribute("ESPColor") then
+			    plr:SetAttribute("ESPColor", GetESPColorForPlayer(plr, plr.Team))
+			end
+			
 			for b,n in pairs (plr.Character:GetChildren()) do
 				if (n:IsA("BasePart")) then
 					local a = Instance.new("BoxHandleAdornment")
@@ -5645,7 +5691,7 @@ function ESP(plr)
 					a.ZIndex = 10
 					a.Size = n.Size
 					a.Transparency = espTransparency
-					a.Color = plr.TeamColor
+					a.Color3 = plr:GetAttribute("ESPColor")
 				end
 			end
 			if plr.Character and plr.Character:FindFirstChild('Head') then
@@ -5654,19 +5700,20 @@ function ESP(plr)
 				BillboardGui.Adornee = plr.Character.Head
 				BillboardGui.Name = plr.Name
 				BillboardGui.Parent = ESPholder
-				BillboardGui.Size = UDim2.new(0, 100, 0, 150)
+				BillboardGui.Size = UDim2.new(0, 125, 0, 175)
 				BillboardGui.StudsOffset = Vector3.new(0, 1, 0)
 				BillboardGui.AlwaysOnTop = true
 				TextLabel.Parent = BillboardGui
 				TextLabel.BackgroundTransparency = 1
 				TextLabel.Position = UDim2.new(0, 0, 0, -50)
 				TextLabel.Size = UDim2.new(0, 100, 0, 100)
-				TextLabel.Font = Enum.Font.SourceSansSemibold
+				TextLabel.Font = Enum.Font.FredokaOne
+				TextLabel.RichText = true
 				TextLabel.TextSize = 20
-				TextLabel.TextColor3 = Color3.new(1, 1, 1)
+				TextLabel.TextColor3 = plr:GetAttribute("ESPColor")
 				TextLabel.TextStrokeTransparency = 0
 				TextLabel.TextYAlignment = Enum.TextYAlignment.Bottom
-				TextLabel.Text = 'Name: '..plr.Name
+				TextLabel.Text = '(not initalized)'
 				TextLabel.ZIndex = 10
 				local espLoopFunc
 				local teamChange
@@ -5700,7 +5747,13 @@ function ESP(plr)
 					if COREGUI:FindFirstChild(plr.Name..'_ESP') then
 						if plr.Character and getRoot(plr.Character) and plr.Character:FindFirstChildOfClass("Humanoid") and Players.LocalPlayer.Character and getRoot(Players.LocalPlayer.Character) and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
 							local pos = math.floor((getRoot(Players.LocalPlayer.Character).Position - getRoot(plr.Character).Position).magnitude)
-							TextLabel.Text = 'Name: '..plr.Name..' | Health: '..round(plr.Character:FindFirstChildOfClass('Humanoid').Health, 1)..' | Studs: '..pos
+							
+							if plr.Character:FindFirstChild("Head") and plr.Character:FindFirstChild("Head"):FindFirstChildOfClass("BillboardGui") and plr.Character:FindFirstChild("Head"):FindFirstChildOfClass("BillboardGui"):FindFirstChildOfClass("TextLabel") then
+							local temp_RPName = SplitRPName(plr.Character:FindFirstChild("Head"):FindFirstChildOfClass("BillboardGui"):FindFirstChildOfClass("TextLabel").Text)
+								TextLabel.Text = temp_RPName..'<br/>Dist: '..pos
+							else
+								TextLabel.Text = 'Name: '..plr.DisplayName..' ('..plr.Name..')<br/>Dist: '..pos
+							end
 						end
 					else
 						teamChange:Disconnect()
